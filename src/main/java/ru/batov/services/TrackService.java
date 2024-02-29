@@ -2,7 +2,8 @@ package ru.batov.services;
 
 import com.google.gson.Gson;
 import com.jayway.jsonpath.JsonPath;
-import ru.batov.models.TrackModel;
+import ru.batov.DAO.TrackDaoJdbs;
+import ru.batov.models.TrackHistoryModel;
 
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -12,7 +13,7 @@ import java.util.List;
 
 public class TrackService {
 
-    public String getJsonPochta(String track){
+    private String getJsonPochta(String track){
         String jsonPochta = "";
         try {
             String json = "[\"" + track + "\"]";
@@ -31,25 +32,43 @@ public class TrackService {
         return jsonPochta;
     }
 
-    public List<String> getListTreck(){
-        return null; //todo
+    public void processingListTrack(){
+        TrackDaoJdbs trackDaoJdbs = new TrackDaoJdbs();
+        List<String> listTrack = trackDaoJdbs.getListTrack("In-transit");
+        for (String track : listTrack) {
+            String json = getJsonPochta(track);
+            processingTrack(json);
+        }
     }
 
-    public void processingTrack(String json){
-
+    private void processingTrack(String json){
         Gson gson = new Gson();
         String name = JsonPath.parse(json).read("$..recipient").toString();
         String jsonHistory = JsonPath.parse(json).read("$..trackingHistoryItemList").toString();
         jsonHistory = jsonHistory.substring(1, jsonHistory.length()-1);
-        TrackModel[] trackModels = gson.fromJson(json, TrackModel[].class);
+        TrackHistoryModel[] trackModels = gson.fromJson(json, TrackHistoryModel[].class);
+
+        for (TrackHistoryModel trackModel : trackModels) {
+            if(trackModel.getHumanStatus().equals("Присвоен трек-номер")){//todo точное название статуса
+                createLineInDb(json);
+            }
+            if (trackModel.getHumanStatus().equals("Вручение адресату")
+                    || trackModel.getHumanStatus().equals("Вручение адресату почтальоном")){
+                updateHistoryTrack(json);
+            }
+            if (trackModel.getHumanStatus().equals("Возврат отправителю по иным обстоятельствам")
+                    || trackModel.getHumanStatus().equals("Возврат отправителю из-за истечения срока хранения")){
+                updateHistoryTrack(json);
+            }
+        }
     }
 
-    public void createLineInDb(String json){
+    private void createLineInDb(String json){
 
         //todo загрузка всего этого чуда в бд
     }
 
-    public void updateHistoryTrack(String json){
+    private void updateHistoryTrack(String json){
         //todo загрузка всего этого чуда в бд
     }
 

@@ -1,6 +1,6 @@
 package ru.batov.models;
 
-public class TrackModel {
+public class TrackHistoryModel {
     String humanStatus;
     String date;
 
@@ -20,7 +20,7 @@ public class TrackModel {
         this.date = date;
     }
 
-    public TrackModel(String humanStatus, String date) {
+    public TrackHistoryModel(String humanStatus, String date) {
         this.humanStatus = humanStatus;
         this.date = date;
     }
