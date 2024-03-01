@@ -4,6 +4,7 @@ import com.google.gson.Gson;
 import com.jayway.jsonpath.JsonPath;
 import ru.batov.DAO.TrackDaoJdbs;
 import ru.batov.models.TrackHistoryModel;
+import ru.batov.models.TrackModel;
 
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -44,13 +45,14 @@ public class TrackService {
     private void processingTrack(String json){
         Gson gson = new Gson();
         String name = JsonPath.parse(json).read("$..recipient").toString();
+        String track = JsonPath.parse(json).read("$..barcode").toString();
         String jsonHistory = JsonPath.parse(json).read("$..trackingHistoryItemList").toString();
         jsonHistory = jsonHistory.substring(1, jsonHistory.length()-1);
-        TrackHistoryModel[] trackModels = gson.fromJson(json, TrackHistoryModel[].class);
+        TrackHistoryModel[] trackModels = gson.fromJson(jsonHistory, TrackHistoryModel[].class);
 
         for (TrackHistoryModel trackModel : trackModels) {
             if(trackModel.getHumanStatus().equals("Присвоен трек-номер")){//todo точное название статуса
-                createLineInDb(json);
+                updateCreateDate();
             }
             if (trackModel.getHumanStatus().equals("Вручение адресату")
                     || trackModel.getHumanStatus().equals("Вручение адресату почтальоном")){
@@ -63,9 +65,8 @@ public class TrackService {
         }
     }
 
-    private void createLineInDb(String json){
+    private void updateCreateDate(){
 
-        //todo загрузка всего этого чуда в бд
     }
 
     private void updateHistoryTrack(String json){
