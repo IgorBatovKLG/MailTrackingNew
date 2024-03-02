@@ -11,8 +11,6 @@ import java.time.format.DateTimeFormatter;
 public class Main {
     public static void main(String[] args) {
         System.out.println(LocalDate.now() + " Start");
-        TrackDaoJdbs trackDaoJdbs = new TrackDaoJdbs();
-        trackDaoJdbs.getListTrack("In-transit").forEach(System.out::println);
 //        Runnable patient = () -> {
 //            while (true) {
 //                PatientService patientService = new PatientService();
@@ -25,20 +23,20 @@ public class Main {
 //                }
 //            }
 //        };
-//        Runnable track = () -> {
-//            while (true) {
-//                TrackService trackService = new TrackService();
-//                trackService.processingListTrack();
-//                try {
-//                    Thread.sleep(1000 * 60 * 60 * 5);
-//                } catch (InterruptedException e) {
-//                    e.printStackTrace();
-//                }
-//            }
-//        };
+        Runnable track = () -> {
+            while (true) {
+                TrackService trackService = new TrackService();
+                trackService.processingListTrack();
+                try {
+                    Thread.sleep(1000 * 60 * 60 * 5);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            }
+        };
 //        Thread threadPatient = new Thread(patient);
-//        Thread threadTrack = new Thread(track);
+        Thread threadTrack = new Thread(track);
 //        threadPatient.start();
-//        threadTrack.start();
+        threadTrack.start();
     }
 }

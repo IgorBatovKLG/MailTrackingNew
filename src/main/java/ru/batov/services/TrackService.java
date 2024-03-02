@@ -4,17 +4,19 @@ import com.google.gson.Gson;
 import com.jayway.jsonpath.JsonPath;
 import ru.batov.DAO.TrackDaoJdbs;
 import ru.batov.models.TrackHistoryModel;
-import ru.batov.models.TrackModel;
 
+import java.lang.reflect.Array;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.util.ArrayList;
 import java.util.List;
 
 public class TrackService {
 
     private String getJsonPochta(String track){
+        System.out.println("Started checking " + track);
         String jsonPochta = "";
         try {
             String json = "[\"" + track + "\"]";
@@ -28,7 +30,7 @@ public class TrackService {
             HttpResponse<?> response = client.send(request, HttpResponse.BodyHandlers.ofString());
             jsonPochta = response.body().toString();
         }catch (Exception e){
-
+            System.out.println("Error Pochta.ru " + track + " | " + e.getMessage());
         }
         return jsonPochta;
     }
@@ -43,34 +45,60 @@ public class TrackService {
     }
 
     private void processingTrack(String json){
+        System.out.println("Json processing");
         Gson gson = new Gson();
-        String name = JsonPath.parse(json).read("$..recipient").toString();
-        String track = JsonPath.parse(json).read("$..barcode").toString();
-        String jsonHistory = JsonPath.parse(json).read("$..trackingHistoryItemList").toString();
-        jsonHistory = jsonHistory.substring(1, jsonHistory.length()-1);
-        TrackHistoryModel[] trackModels = gson.fromJson(jsonHistory, TrackHistoryModel[].class);
+        try {
+            String name = JsonPath.parse(json).read("$..recipient").toString();
+            String track = JsonPath.parse(json).read("$..barcode").toString();
+            track = track.substring(2, track.length() - 2);
+            String jsonHistory = JsonPath.parse(json).read("$..trackingHistoryItemList").toString();
+            jsonHistory = jsonHistory.substring(1, jsonHistory.length() - 1);
+            TrackHistoryModel[] trackModels = gson.fromJson(jsonHistory, TrackHistoryModel[].class);
 
-        for (TrackHistoryModel trackModel : trackModels) {
-            if(trackModel.getHumanStatus().equals("Присвоен трек-номер")){//todo точное название статуса
-                updateCreateDate();
+            for (TrackHistoryModel trackModel : trackModels) {
+                if (trackModel.getHumanStatus().equals("Присвоен трек-номер")) {//todo точное название статуса
+                    updateCreateDate(track, trackModel.getDate().split("T")[0]);
+                }
+                if (trackModel.getHumanStatus().equals("Вручение адресату")
+                        || trackModel.getHumanStatus().equals("Вручение адресату почтальоном")) {
+                    updateStatusTrack(track, "Delivered");
+                    System.out.println("Track status Delivered " + track);
+                }
+                if (trackModel.getHumanStatus().equals("Возврат отправителю по иным обстоятельствам")
+                        || trackModel.getHumanStatus().equals("Возврат отправителю из-за истечения срока хранения")) {
+                    updateStatusTrack(track, "Returned");
+                    System.out.println("Track status Returned " + track);
+                }
             }
-            if (trackModel.getHumanStatus().equals("Вручение адресату")
-                    || trackModel.getHumanStatus().equals("Вручение адресату почтальоном")){
-                updateHistoryTrack(json);
-            }
-            if (trackModel.getHumanStatus().equals("Возврат отправителю по иным обстоятельствам")
-                    || trackModel.getHumanStatus().equals("Возврат отправителю из-за истечения срока хранения")){
-                updateHistoryTrack(json);
-            }
+            TrackHistoryModel lastTrackModel = trackModels[0];
+            createHistoryTrack(track, json, name, lastTrackModel.getHumanStatus() + "|" + lastTrackModel.getDate().split("T")[0]);
+            updateHistoryTrack(track, json, name, lastTrackModel.getHumanStatus() + "|" + lastTrackModel.getDate().split("T")[0]);
+
+
+        } catch (Exception e){
+            System.out.println("Error json "  + e.getMessage());
         }
-    }
-
-    private void updateCreateDate(){
 
     }
 
-    private void updateHistoryTrack(String json){
-        //todo загрузка всего этого чуда в бд
+    private void updateCreateDate(String track, String date){
+        TrackDaoJdbs trackDaoJdbs = new TrackDaoJdbs();
+        trackDaoJdbs.updateCreateDateTrack(track, date);
+    }
+
+    private void updateHistoryTrack(String track, String json, String name, String lastHistory){
+        TrackDaoJdbs trackDaoJdbs = new TrackDaoJdbs();
+        trackDaoJdbs.updateTrackHistoryInDatabase(track, json, name, lastHistory);
+    }
+
+    private void createHistoryTrack(String track, String json, String name, String lastHistory){
+        TrackDaoJdbs trackDaoJdbs = new TrackDaoJdbs();
+        trackDaoJdbs.addTrackHistoryToDatabase(track, json, name, lastHistory);
+    }
+
+    private void updateStatusTrack(String track, String status){
+        TrackDaoJdbs trackDaoJdbs = new TrackDaoJdbs();
+        trackDaoJdbs.uodateStatusTrack(track,status);
     }
 
 
